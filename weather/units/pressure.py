@@ -1,4 +1,4 @@
-!/usr/bin/env python
+#!/usr/bin/env python
 
 #
 # See __doc__ for an explanation of what this module does
