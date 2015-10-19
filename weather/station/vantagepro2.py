@@ -348,7 +348,7 @@ class VantagePro2(object):
 	WRDCmd = bytes([0x57,0x52,0x44,0x12,0x4D,0x0A])
 	IDReply = bytes([0x0a,0x0d,0x36,0x33,0x31,0x32,0x43,0x0a,0x0d])
 
-	def __init__(self,device,logInterval=5):
+	def __init__(self,device):
 		self.port = serial.Serial(device,BAUDRATE,timeout=READ_DELAY)
 		self.wakeupConsole()		
 		self.getConsoleType()
@@ -509,6 +509,7 @@ class VantagePro2(object):
 
 	def getLOOPMsg(self):
 		
+		
 		for i in range(3):
 			log.info("Sending LOOP Command to Console Attempt %d/3",i+1)
 			self.port.write( ("LOOP 1").encode() + self.LF)
@@ -534,6 +535,7 @@ class VantagePro2(object):
 		
 			
 	def getLOOP2Msg(self):
+		
 		
 		for i in range(3):
 			log.info("Sending LPS Command to Console Attempt %d/3",i+1)

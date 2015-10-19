@@ -19,6 +19,7 @@ import weather.services
 log = logging.getLogger('')
 
 class NoDeviceException(Exception):pass
+class NoDeviceExceptionError(NoDeviceException,TypeError):pass
 
 
 def weather_update(publishSite,LOOP1,LOOP2):
@@ -96,17 +97,25 @@ if __name__ == '__main__':
 	#log.info('test logging')
 	
 	ps = weather.services.Wunderground('IALBERTA483','reergnyd')
-
-	station = weather.station.VantagePro2(args.tty,10)
-
+	
+	station = weather.station.VantagePro2(args.tty)
+	
 	while True:
 	
-		LOOPResults = station.getLOOPMsg()
-#		print("WindSpeed: ",LOOPResults['WindSpeed'])
-		LOOP2Results = station.getLOOP2Msg()
-#		print("WindSpeed2: ",LOOP2Results['WindSpeed'])
-		try:
+		try:		
+			station.wakeUpConsole()	
+			LOOPResults = station.getLOOPMsg()
+			LOOP2Results = station.getLOOP2Msg()		
 			weather_update(ps,LOOPResults,LOOP2Results)
 			time.sleep(15)
 		except (Exception) as e:
 			log.error(e)
+
+
+
+
+
+
+
+
+

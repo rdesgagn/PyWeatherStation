@@ -105,9 +105,7 @@ class Wunderground(HttpPublisher):
 
     def publish(self):
      http = super( Wunderground, self).publish()
-     #if not http[2] == b'success'
-      #raise PublishException('Server returned invalid status: %d %s %s'% http)
-	
-	#if not http[2].find('success') >= 0:
+     if  not http[2].decode() == "success" :
+      raise PublishException('Server returned invalid status: %d %s %s'% http)
      return http
 
