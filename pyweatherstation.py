@@ -114,12 +114,16 @@ def 	main():
 	parser = argparse.ArgumentParser(description='Davis Vantage Pro2 weather station interface to Weather Underground')
 	setParsingOptions(parser)
 	args = parser.parse_args()
-	log.info("Arguments ", args)
+	log.debug("Arguments ", args)
 	init_log(args.debug)
 	
 	ps = weather.services.Wunderground('IALBERTA483','reergnyd')
+		
+	try:
+		station = weather.station.VantagePro2(args.tty)
 	
-	station = weather.station.VantagePro2(args.tty)
+	except (Exception) as e:
+		log.error(e,exc_info=True)
 	
 	while True:
 	
