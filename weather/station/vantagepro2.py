@@ -15,7 +15,7 @@ import binascii
 #import ntplib
 from time import ctime
 
-log = logging.getLogger(__name__)
+log = logging.getLogger('__main__'+'.'+__name__)
 
 READ_DELAY = 5
 BAUDRATE = 19200
@@ -349,7 +349,7 @@ class VantagePro2(object):
 	IDReply = bytes([0x0a,0x0d,0x36,0x33,0x31,0x32,0x43,0x0a,0x0d])
 
 	def __init__(self,device):
-		self.port = serial.Serial(device,BAUDRATE,timeout=READ_DELAY)
+		self.port = serial.Serial(device,BAUDRATE,timeout=READ_DELAY)		
 		self.wakeupConsole()		
 		self.getConsoleType()
 		#self.setConsoleTime()
@@ -375,8 +375,8 @@ class VantagePro2(object):
 			ack = self.port.read(len(self.WAKEUPACK))
 			log_raw('read',ack)
 			if ack == self.WAKEUPACK:
-				log.info("Console is awake after #%d call(s).",i+1)
-				log.info("Console is now responding to commands")
+				log.debug("Console is awake after #%d call(s).",i+1)
+				log.debug("Console is now responding to commands")
 				return
 		raise NoDeviceException("Davis Vantage Pro2 is not responding to wakeup command.")
 
@@ -448,7 +448,7 @@ class VantagePro2(object):
 	
 	def setConsoleTime(self):
 
-		#ntpTime = bytearray(6)
+		ntpTime = bytearray(6)
 		#ntp = ntplib.NTPClient()
 		#response = ntp.request('ca.pool.ntp.org')
 		#print ("Response:",ctime(response.tx_time))

@@ -11,15 +11,20 @@ import os
 import sys
 import time
 import logging
+import logging.handlers
 import argparse
 
 import weather.station
 import weather.services
 
-log = logging.getLogger('')
 
 class NoDeviceException(Exception):pass
 class NoDeviceExceptionError(NoDeviceException,TypeError):pass
+
+
+LOG_FILENAME = "/var/log/PyWeatherStation.log"
+LOG_LEVEL = logging.INFO
+log = logging.getLogger(__name__)
 
 
 def weather_update(publishSite,LOOP1,LOOP2):
@@ -60,23 +65,37 @@ def weather_update(publishSite,LOOP1,LOOP2):
 
 
 
-def init_log(quiet,debug):
+def init_log(debug):
 
-	from logging.handlers import SysLogHandler
-	fmt = logging.Formatter( os.path.basename(sys.argv[0]) + 
-	".%(name)s %(levelname)s - %(message)s")
 	
-	facility = SysLogHandler.LOG_DAEMON 
-	syslog = SysLogHandler(address='/dev/log',facility=facility)
-	syslog.setFormatter(fmt)
-	log.addHandler(syslog)
-	if not quiet :
-		console = logging.StreamHandler()
-		console.setFormatter(fmt)
-		log.addHandler(console)
-		log.setLevel(logging.INFO)
-		if debug :
-			log.setLevel(logging.DEBUG)
+#	from logging.handlers import SysLogHandler
+#	fmt = logging.Formatter( os.path.basename(sys.argv[0]) + 
+#	".%(name)s %(levelname)s - %(message)s")
+	
+#	facility = SysLogHandler.LOG_DAEMON 
+#	syslog = SysLogHandler(address='/dev/log',facility=facility)
+#	syslog.setFormatter(fmt)
+#	log.addHandler(syslog)
+#	if not quiet :
+#		console = logging.StreamHandler()
+#		console.setFormatter(fmt)
+#		log.addHandler(console)
+#		log.setLevel(logging.INFO)
+#		if debug :
+#			log.setLevel(logging.DEBUG)
+	if debug:	
+		log.setLevel(logging.DEBUG)
+		
+	else:
+		log.setLevel(LOG_LEVEL)
+		
+
+	handler = logging.handlers.TimedRotatingFileHandler(LOG_FILENAME,when="midnight",backupCount=3)
+	formatter = logging.Formatter('%(asctime)s %(name)-12s %(levelname)-8s %(message)s')
+	handler.setFormatter(formatter)
+	log.addHandler(handler)
+	
+
 
 
 def setParsingOptions(parser):
@@ -85,16 +104,18 @@ def setParsingOptions(parser):
 	help='set serial port device [/dev/ttyS0]')
 	parser.add_argument('-d','--debug',dest='debug',action="store_true", default=False,
 	help='enable debug logging')
-	parser.add_argument('-q','--quiet',dest='quiet',action="store_true",default=False,
-	help='disable console logging')
+	#parser.add_argument('-q','--quiet',dest='quiet',action="store_true",default=False,
+	#help='disable console logging')
+	parser.add_argument('-l','--log',dest='LOG_FILENAME',default=LOG_FILENAME,help="file to write log to (default " + LOG_FILENAME + ")" )
 
-if __name__ == '__main__':
+
+def 	main():
+
 	parser = argparse.ArgumentParser(description='Davis Vantage Pro2 weather station interface to Weather Underground')
 	setParsingOptions(parser)
 	args = parser.parse_args()
-	print("Arguments ", args)
-	init_log(args.quiet,args.debug)
-	#log.info('test logging')
+	log.info("Arguments ", args)
+	init_log(args.debug)
 	
 	ps = weather.services.Wunderground('IALBERTA483','reergnyd')
 	
@@ -109,9 +130,12 @@ if __name__ == '__main__':
 			weather_update(ps,LOOPResults,LOOP2Results)
 			time.sleep(60)
 		except (Exception) as e:
-			log.error(e)
+			log.error(e,exc_info=True)
+	
 
+if __name__ == '__main__':
 
+	main()
 
 
 

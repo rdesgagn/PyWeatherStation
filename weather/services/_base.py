@@ -4,7 +4,7 @@
 from __future__ import absolute_import
 
 import logging
-log = logging.getLogger(__name__)
+log = logging.getLogger('__main__'+'.'+__name__)
 
 
 class PublishException(Exception): pass

@@ -42,7 +42,7 @@
 from __future__ import absolute_import
 
 import logging
-log = logging.getLogger(__name__)
+log = logging.getLogger('__main__'+'.'+__name__)
 
 from . _base import *
 
@@ -68,7 +68,8 @@ class Wunderground(HttpPublisher):
             self.server = self.REALTIME_SERVER
         else:
             self.server = self.STD_SERVER
-
+        log.debug("Init WUnderground with ID:%s PASSWORD:%s",sid,password)
+        
 
     def set( self, pressure='NA', dewpoint='NA', humidity='NA', tempf='NA',
             rainin='NA', rainday='NA', dateutc='NA', windgust='NA',
