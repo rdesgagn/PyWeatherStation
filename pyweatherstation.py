@@ -23,10 +23,10 @@ class NoDeviceExceptionError(NoDeviceException,TypeError):pass
 
 
 def weather_update(publishSite,LOOP1,LOOP2):
-	print ("entering weather_update")		
+	#print ("entering weather_update")		
 	now = time.gmtime()
 	LOOP2['DateStampUTC']  = time.strftime("%Y-%m-%d %H:%M:%S", now)
-	print("dewpoint: ",LOOP2['DewPoint'])
+	#print("dewpoint: ",LOOP2['DewPoint'])
 	#try:
          #print ("pressure : ",LOOP1['Pressure'])
          #print ("dewPoint : ",LOOP1['DewPoint'])
@@ -103,11 +103,11 @@ if __name__ == '__main__':
 	while True:
 	
 		try:		
-			station.wakeUpConsole()	
+			station.wakeupConsole()	
 			LOOPResults = station.getLOOPMsg()
 			LOOP2Results = station.getLOOP2Msg()		
 			weather_update(ps,LOOPResults,LOOP2Results)
-			time.sleep(15)
+			time.sleep(60)
 		except (Exception) as e:
 			log.error(e)
 
