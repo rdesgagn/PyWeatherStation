@@ -12,7 +12,7 @@ import struct
 import time
 from array import array
 import binascii
-import ntplib
+#import ntplib
 from time import ctime
 
 log = logging.getLogger(__name__)
@@ -448,12 +448,13 @@ class VantagePro2(object):
 	
 	def setConsoleTime(self):
 
-		ntpTime = bytearray(6)
-		ntp = ntplib.NTPClient()
-		response = ntp.request('ca.pool.ntp.org')
+		#ntpTime = bytearray(6)
+		#ntp = ntplib.NTPClient()
+		#response = ntp.request('ca.pool.ntp.org')
 		#print ("Response:",ctime(response.tx_time))
-		log.info("Setting timestamp to %s",ctime(response.tx_time))
-		localtime = time.localtime(response.orig_time)
+		#log.info("Setting timestamp to %s",ctime(response.tx_time))
+		log.info("Setting timestamp to %s",ctime(time.time()))
+		localtime = time.localtime(time.time())
 
 		#print("Year: ",localtime.tm_year)
 		#print("Month: ",localtime.tm_mon)		
