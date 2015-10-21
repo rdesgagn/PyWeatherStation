@@ -25,7 +25,7 @@ class NoDeviceExceptionError(NoDeviceException,TypeError):pass
 LOG_FILENAME = "/var/log/PyWeatherStation.log"
 LOG_LEVEL = logging.INFO
 log = logging.getLogger(__name__)
-
+NUMBER_OF_UPDATES_IN_A_DAY=1440
 
 def weather_update(publishSite,LOOP1,LOOP2):
 	#print ("entering weather_update")		
@@ -116,25 +116,26 @@ def 	main():
 	args = parser.parse_args()
 	log.debug("Arguments ", args)
 	init_log(args.debug)
-	
+	loopCounter = 0
 	ps = weather.services.Wunderground('IALBERTA483','reergnyd')
 		
 	try:
 		station = weather.station.VantagePro2(args.tty)
 	
-	except (Exception) as e:
-		log.error(e,exc_info=True)
+		while True:
 	
-	while True:
-	
-		try:		
 			station.wakeupConsole()	
+			if(loopCounter % NUMBER_OF_UPDATES_IN_A_DAY == 0):
+				station.setConsoleTime()
+				loopCounter = 0
 			LOOPResults = station.getLOOPMsg()
 			LOOP2Results = station.getLOOP2Msg()		
 			weather_update(ps,LOOPResults,LOOP2Results)
+			loopCounter = loopCounter + 1
 			time.sleep(60)
-		except (Exception) as e:
-			log.error(e,exc_info=True)
+	
+	except (Exception) as e:
+		log.error(e,exc_info=True)
 	
 
 if __name__ == '__main__':
