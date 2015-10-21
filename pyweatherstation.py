@@ -125,7 +125,7 @@ def 	main():
 		while True:
 	
 			station.wakeupConsole()	
-			if(loopCounter % NUMBER_OF_UPDATES_IN_A_DAY == 0):
+			if(loopCounter % NUMBER_OF_UPDATES_IN_A_DAY == 0 and not loopCounter == 0):
 				station.setConsoleTime()
 				loopCounter = 0
 			LOOPResults = station.getLOOPMsg()
