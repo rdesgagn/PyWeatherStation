@@ -380,6 +380,7 @@ class VantagePro2(object):
 					log.debug("Console is awake after #%d call(s).",i+1)
 					log.debug("Console is now responding to commands")
 					condition = False
+					break
 				
 			time.sleep(5)
 		#raise NoDeviceException("Davis Vantage Pro2 is not responding to wakeup command.")
