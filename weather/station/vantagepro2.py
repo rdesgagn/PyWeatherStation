@@ -368,17 +368,21 @@ class VantagePro2(object):
 		
 		
 	def wakeupConsole(self):
-		for i in range(3):
-			log.info("Sending Wakeup Command to Console. Attempt %d/3",i+1)
-			#self.port.write(bytearray('\n','ascii'))
-			self.port.write(self.LF)
-			ack = self.port.read(len(self.WAKEUPACK))
-			log_raw('read',ack)
-			if ack == self.WAKEUPACK:
-				log.debug("Console is awake after #%d call(s).",i+1)
-				log.debug("Console is now responding to commands")
-				return
-		raise NoDeviceException("Davis Vantage Pro2 is not responding to wakeup command.")
+		condition = True
+		while(condition):
+			for i in range(3):
+				log.info("Sending Wakeup Command to Console. Attempt %d/3",i+1)
+				#self.port.write(bytearray('\n','ascii'))
+				self.port.write(self.LF)
+				ack = self.port.read(len(self.WAKEUPACK))
+				log_raw('read',ack)
+				if ack == self.WAKEUPACK:
+					log.debug("Console is awake after #%d call(s).",i+1)
+					log.debug("Console is now responding to commands")
+					condition = False
+				
+			time.sleep(5)
+		#raise NoDeviceException("Davis Vantage Pro2 is not responding to wakeup command.")
 
 	def getConsoleID(self):
 		for i in range(3):

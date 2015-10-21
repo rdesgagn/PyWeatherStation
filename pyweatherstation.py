@@ -61,7 +61,7 @@ def weather_update(publishSite,LOOP1,LOOP2):
 		response = publishSite.publish()
 		print ("%s %s",response.status,response.reason)
 	except (Exception) as e:
-		log.warn('publisher %s: %s'%(ps.__class__.__name__,e))
+		log.warn('publisher %s: %s'%(publishSite.__class__.__name__,e))
 
 
 
