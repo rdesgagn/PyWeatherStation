@@ -19,6 +19,7 @@ log = logging.getLogger('__main__'+'.'+__name__)
 
 READ_DELAY = 3
 BAUDRATE = 19200
+STATION_DELAY = 0.2
 
 
 
@@ -349,23 +350,63 @@ class VantagePro2(object):
 	IDReply = bytes([0x0a,0x0d,0x36,0x33,0x31,0x32,0x43,0x0a,0x0d])
 
 	def __init__(self,device):
-		self.port = serial.Serial(device,BAUDRATE,timeout=READ_DELAY)		
-		self.wakeupConsole()		
-		self.getConsoleType()
-		#self.setConsoleTime()
-		self.getConsoleID()
-		#fields = self.getLOOPMsg()
-		#print ("allo : ",fields['Pressure'])
-		#time.sleep(1)
-		#fields2 = self.getLOOP2Msg()
-		#print ("allo2 : ", fields2['InsideTemp'])
+		#self.port = serial.Serial(device,BAUDRATE,timeout=READ_DELAY)		
+		#self.wakeupConsole()		
+		#self.getConsoleType()
+		#self.getConsoleID()
+		self.port=None
 		
 		
 	def __del__(self):
-		self.port.close()
+		if(self.port != None):
+			self.port.close()
 
 
+	def serialComm(self,device):
 		
+		self.port = serial.Serial(device,BAUDRATE,timeout=READ_DELAY)
+		time.sleep(STATION_DELAY)
+	
+		if self.port == None :
+			return
+		else :
+			wakeUpSuccess = False
+			for attemptNo in range(1,3):
+				log.info("Sending wakeup command to Console. Attempt %d/3",attemptNo)
+				self.port.write(self.LF)
+				if self.port.inWaiting() == 2:
+					dummyBuffer = self.port.read(self.port.inWaiting())
+					log.info("Console is awake after %d call(s).",attemptNo)
+					wakeUpSuccess = True
+					self.writeCommand("Test")
+					time.sleep(STATION_DELAY)
+					dummyBuffer = self.port.read(self.port.inWaiting())
+					break
+				else:
+					log.info("The Console is not responding to wakeupcall")
+					dummyBuffer = self.port.read(self.port.inWaiting())
+					time.sleep(1.5)
+
+			if wakeUpSuccess == True:
+				log.info("The Console is now responding to Commands.")
+			else:
+				log.info("Unable to wake up the console. Check connections.")
+				self.port.close()
+				self.port = None
+			return self.port
+	  		
+	def writeCommand(self,Command):
+		if self.port != None:
+	       		Command = Command.encode() + self.LF
+	       	
+		self.port.write(Command)
+
+		if Command == "VER".decode() + self.LF:
+			time.sleep(STATION_DELAY * 3)
+		else:
+		    	time.sleep(STATION_DELAY)
+
+	    	
 		
 	def wakeupConsole(self):
 		condition = True
@@ -386,132 +427,190 @@ class VantagePro2(object):
 		#raise NoDeviceException("Davis Vantage Pro2 is not responding to wakeup command.")
 
 	def getConsoleID(self):
-		for i in range(3):
-			log.info("Sending ID Command to Console. Attempt %d/3",i+1)
-			self.port.write("ID".encode()+self.LF)
-			ack = self.port.read(9)
-			#id="6312C".encode('utf-8')
-			#print("id: ",id.decode())
-			#ack = self.IDReply
-			log_raw('read',ack)
-			idString = bytes([ack[2] , ack[3], ack[4], ack[5] , ack[6] ]) 
-			#print("id: ",idString)			
-			log.info("Console ID is: %s",idString.decode())
-			return
-		raise NoDeviceException("Davis Vantage Pro2 is not responding to ID Command.")
+		idString = ""
+		if self.port == None:
+			log.info("No serial port handler (getConsoleID)")
+			idString = "Not available."
 
-	def getConsoleVersion(self):
-		for i in range(3):
-			log.info("Sending VER Command to Console Attempt %d/3",i+1)
-			self.port.write("VER".encode() +self.LF)
+		else:
+			log.info("Sending ID Command to Console.")
+			self.writeCommand("ID")
+			idAck = self.port.inWaiting()
+			#ack = self.port.read(9)
+			if idAck > 0 :
+				idString = self.port.read(idAck)
+			log_raw('read',idAck)
+			#to do essayer idString = idString.strip()
+			idString = bytes([idAck[2] , idAck[3], idAck[4], idAck[5] , idAck[6] ]) 
+			#print("id: ",idString)			
+			if idString == "":
+				idString = "Not available"
+			log.info("Console ID is: %s",idString.decode())
+		
+		return idString
+		
+
+	def getConsoleFirmwareDateCode(self):
+		firmwareDateCode =""
+		if self.port == None: 
+			log.info("No serial port handler (getConsoleFirmwareDateCode)")
+			firmwareDateCode = "Not Available"
 			
+		else:
+			log.info("Sending VER Command to Console.")
+			self.writeCommand("VER")
+			firmwareDateCodeBytes = self.port.inWaiting()
+			firmwareDateCode = self.port.read(firmwareDateCodeBytes)
+			firmwareDateCode = firmwareDateCode.decode()
+			firmwareDateCode = firmwareDateCode.replace("\n\r"," ",3)
+			firmwareDateCode = firmwareDateCode.replace("OK","",1)
+			firmwareDateCode = firmwareDateCode.strip()
+			log.info("Console version is ",firmwareDateCode)
+		
+		return firmwareDateCode
+		
+	def getConsoleFirmwareVersion(self):
+		firmwareVersion =""
+		if self.port == None: 
+			log.info("No serial port handler (getConsoleFirmwareVersion)")
+			firmwareVersion = "Not Available"
+			
+		else:
+			log.info("Sending NVER Command to Console.")
+			self.writeCommand("NVER")
+			firmwareVersionBytes = self.port.inWaiting()
+			firmwareVersion = self.port.read(firmwareVersionBytes)
+			firmwareVersion = firmwareVersion.decode()
+			firmwareVersion = firmwareVersion.replace("\n\r"," ",3)
+			firmwareVersion = firmwareVersion.replace("OK","",1)
+			firmwareVersion = firmwareVersion.strip()
+			log.info("Console version is ",firmwareVersion)
+		
+		return consoleVersion
+
 			
 
 	def getConsoleType(self):
-		for i in range(3):
-			log.info("Sending Console Type Command to Console. Attempt %d/3",i+1)
-			frame = bytearray([0x12,0x4D])
-			self.port.write( "WRD".encode() + frame + self.LF )
-			ack = self.port.read(len(self.ACK )+1)
-			#print("ACK: %x  Size %d", ack,len(ack))
-			#ack = self.WRD
-			log_raw('read',ack)
-			#ACK is 4 bytes <ACK><Model>
-			if ack != None and len(ack) == 2:
-				#ack = ack[3]		
-				if ack[1]== 0x00:
+		log.info("Sending Console Type Command to Console.")
+		#frame = bytearray([0x12,0x4D])
+		self.writeCommand( "WRD" + chr(18) + chr(77) )
+		#ack = self.port.read(len(self.ACK )+1)
+		consoleTypeBytes = self.port.inWaiting()
+		consoleType = ""
+		if consoleTypeBytes == 2:
+			consoleType = self.port.read(consoleTypeBytes)
+		else:
+			log.info("Ignoring WRD response from Console.")
+			consoleType = "Unknown console type"
+			return 	consoleType
+		
+		log_raw('read',consoleType)
+		#ACK is 4 bytes <ACK><Model>
+		if consoleType[0] == self.ACK:
+			consoleType = consoleType[1]
+		else:
+			
+			if consoleType != "" :
+
+				if consoleType[1]== 0x00:
 					log.info("Console is a Wizard III")
-					return
-				elif ack[1] == 0x01:
+					consoleType="Console is a Wizard III"
+					return consoleType
+				elif consoleType[1] == 0x01:
 					log.info("Console is a Wizard II")
-					return
-				elif ack[1] == 0x02:
+					consoleType="Console is a Wizard II"
+					return consoleType
+				elif consoleType[1] == 0x02:
 					log.info("Console is a Monitor")
-					return
-				elif ack[1] == 0x03 :
+					consoleType="Console is a Monitor"
+					return consoleType
+				elif consoleType[1] == 0x03 :
 					log.info("Console is a Perception")
-					return
-				elif ack[1] == 0x04:
+					consoleType="Console is a Perception"
+					return consoleType
+				elif consoleType[1] == 0x04:
 					log.info("Console is a Gro Weather")
-					return
-				elif ack[1] == 0x05: 
+					consoleType="Console is a Gro Weather"
+					return consoleType
+				elif consoleType[1] == 0x05: 
 					log.info("Console is Energy Enviromonitor")
-					return
-				elif ack[1] == 0x06 :
+					consoleType="Console is Energy Enviromonitor"
+					return consoleType
+				elif consoleType[1] == 0x06 :
 					log.info("Console is Heatlh Enviromonitor")
-					return
-				elif ack[1] == 0x10:
+					consoleType="Console is Health Enviromonitor"
+					return consoleType
+				elif consoleType[1] == 0x10:
 					log.info("Console is a Vantage Pro, Vantage Pro2")
-					return
-				elif ack[1] == 0x11 :
+					consoleType="Console is Vantage Pro, Pro2"
+					return consoleType
+				elif consoleType[1] == 0x11 :
 					log.info("Console is a Vantage Vue")
-					return
+					consoleType="Console is a Vantage Vue"
+					return consoleType
 				else	:	
-					raise NoDeviceException("Unknown console exiting...")
+					log.info("Unknown console")
+					consoleType="Unknownc console"
+					return consoleType
 							
-		raise NoDeviceException("Davis Vantage Pro2 is not responding to console type command.")
+
 	
 	def setConsoleTime(self):
-
-		ntpTime = bytearray(6)
-		#ntp = ntplib.NTPClient()
-		#response = ntp.request('ca.pool.ntp.org')
-		#print ("Response:",ctime(response.tx_time))
-		#log.info("Setting timestamp to %s",ctime(response.tx_time))
-		log.info("Setting timestamp to %s",ctime(time.time()))
-		localtime = time.localtime(time.time())
-
-		#print("Year: ",localtime.tm_year)
-		#print("Month: ",localtime.tm_mon)		
-		#print("Day: ",localtime.tm_mday)
-		#print("Hour: ",localtime.tm_hour)
-		#print("Minutes: ",localtime.tm_min)
-		#print("Secondes: ",localtime.tm_sec)
-
 		
-		ntpTime[0]=localtime.tm_sec
-		ntpTime[1]=localtime.tm_min
-		ntpTime[2]=localtime.tm_hour
-		ntpTime[3]=localtime.tm_mday
-		ntpTime[4]=localtime.tm_mon
-		ntpTime[5]=localtime.tm_year - 1900
-		crc = VProCRC.get(ntpTime)
-		#print('CRC: ',hex(crc))
-		#print ("ntpTime: " ,ntpTime)
+		if self.port == None :
+			return
+		else: 
+			ntpTime = bytearray(6)
+			log.info("Setting timestamp to %s",ctime(time.time()))
+			localtime = time.localtime(time.time())
+	
+			ntpTime[0]=localtime.tm_sec
+			ntpTime[1]=localtime.tm_min
+			ntpTime[2]=localtime.tm_hour
+			ntpTime[3]=localtime.tm_mday
+			ntpTime[4]=localtime.tm_mon
+			ntpTime[5]=localtime.tm_year - 1900
+			crc = VProCRC.get(ntpTime)
 		
-		#format SETTIME<LF>
-		#ACK
-		#<seconds><minutes><hour><day><month><year-1900><CRC>
-		for i in range(3):
-			log.info("Sending SETTIME Command to Console. Attempt %d/3",i+1)
-			self.port.write(("SETTIME").encode() + self.LF)
-			ack = self.port.read(1)
-			#ack=bytes([0x41,0x43,0x4b])
-			#print("len: ",len(ack))
-			#print("ack.decode()",ack.decode())
+			#format SETTIME<LF>
+			#ACK
+			#<seconds><minutes><hour><day><month><year-1900><CRC>
+			log.info("Sending SETTIME Command to Console")
+			self.port.reset_input_buffer()
+			self.port.reset_output_buffer()
+			self.writeCommand("SETTIME")
+			time.sleep(STATION_DELAY*3)
+			ackBytes = self.port.inWaiting()
+			if ackBytes != 1:
+				self.port.reset_input_buffer()
+				self.port.reset_output_buffer()
+				time.sleep(STATION_DELAY)
+				self.writeCommand("SETTIME")
+				time.sleep(STATION_DELAY*3)
+				ackBytes = self.port.inWaiting()
+			ack = self.port.read(ackBytes)
 			log_raw("Read SETTIME First ACK",ack)
 			if(ack == self.ACK):
-				break;
-			#ACK is 3 bytes <ACK>
-		#raise NoDeviceException("Davis Vantage Pro2 is not responding to settime command.")
-		
-		for i in range(3):
-			log.info("Sending time fields  to Console. Attempt %d/3",i+1)
-			print("write: ", ntpTime + crc.to_bytes(2,byteorder='big') )
+				log.info("SETTIME first ack received")
+			else:	
+				log.info("SETTIME first ack not received")
+			
+			log.info("Sending time fields  to Console.")
+#			print("write: ", ntpTime + crc.to_bytes(2,byteorder='big') )
 			self.port.write(ntpTime + crc.to_bytes(2,byteorder='big')   )
-			ack = self.port.read(1)
-			#ack=bytes([0x41,0x43,0x4b])
-		#	print("len: ",len(ack))
-		#	print("ack.decode()",ack.decode())
+			time.sleep(STATION_DELAY*3)
+			ackBytes = self.port.inWaiting()
+			ack = self.port.read(ackBytes)
 			log_raw("Read SETTIME Second ACK",ack)
 			if(ack == self.ACK):
-				log.info("SETTIME Command success")
-				break;
+				log.info("SETTIME Command success. Console is synch with NTP time ",ctime(localtime))
+				
 			elif(ack == self.BADCRC):
 				log.info("BAD CRC Sent")
-				break;
 			
-		#raise NoDeviceException("Davis Vantage Pro2 is not responding to settime command.")	
+			return	
+			
+
 
 	def getLOOPMsg(self):
 		condition = True	
