@@ -120,7 +120,8 @@ def 	main():
 	ps = weather.services.Wunderground('IALBERTA483','reergnyd')
 		
 	try:
-		station = weather.station.VantagePro2(args.tty)
+		station = weather.station.VantagePro2()
+		station.serialComm(args.tty)
 	
 		while True:
 	
