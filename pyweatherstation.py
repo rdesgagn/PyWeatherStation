@@ -59,7 +59,7 @@ def weather_update(publishSite,LOOP1,LOOP2):
 			windgustdir = LOOP2['WindDir10MinWindGust'],
 			)
 		response = publishSite.publish()
-		print ("%s %s",response.status,response.reason)
+		#log.info("%s %s",response.status,response.reason)
 	except (Exception) as e:
 		log.warn('publisher %s: %s'%(publishSite.__class__.__name__,e))
 

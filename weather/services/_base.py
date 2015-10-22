@@ -54,8 +54,7 @@ class HttpPublisher(object):
       data = (http.status, http.reason, http.read())
       conn.close()
       if not (data[0] == 200 and data[1] == 'OK'):
-         raise PublishException('Server returned invalid status: %d %s %s'
-                 % data)
+         raise PublishException('Server returned invalid status: %d %s %s'% data)
 #     print("data: ",data)
       return data
 

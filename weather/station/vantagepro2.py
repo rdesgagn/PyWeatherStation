@@ -17,7 +17,7 @@ from time import ctime
 
 log = logging.getLogger('__main__'+'.'+__name__)
 
-READ_DELAY = 5
+READ_DELAY = 3
 BAUDRATE = 19200
 
 
@@ -514,16 +514,18 @@ class VantagePro2(object):
 		#raise NoDeviceException("Davis Vantage Pro2 is not responding to settime command.")	
 
 	def getLOOPMsg(self):
-		
-		
-		for i in range(3):
-			log.info("Sending LOOP Command to Console Attempt %d/3",i+1)
-			self.port.write( ("LOOP 1").encode() + self.LF)
-			ack = self.port.read(1)
-			#ack = self.ACK
-			if(ack == self.ACK ):
-				log.info("LOOP 1 Command Success.")
-				break;
+		condition = True	
+		while(condition):
+			for i in range(3):
+				log.info("Sending LOOP Command to Console Attempt %d/3",i+1)
+				self.port.write( ("LOOP 1").encode() + self.LF)
+				ack = self.port.read(1)
+				#ack = self.ACK
+				if(ack == self.ACK ):
+					log.info("LOOP 1 Command Success.")
+					condition = False
+					break;
+			time.sleep(5)
 		#raise NoDeviceException("Davis Vantage Pro2 is not responding to LOOP Command.")
 		raw = self.port.read( LOOPStructObject.size )
 		log_raw('read',raw)
@@ -542,16 +544,20 @@ class VantagePro2(object):
 			
 	def getLOOP2Msg(self):
 		
-		
-		for i in range(3):
-			log.info("Sending LPS Command to Console Attempt %d/3",i+1)
-			self.port.write( ("LPS 2 1").encode() + self.LF)
-			ack = self.port.read(1)
-			if(ack != self.ACK):
-				raise NoDeviceException("Davis Vantage Pro2 is not responding to LPS Command.")
-			else :
-				log.info("LPS 2 1 Command Success.")
-				break;
+		condition=True		
+		while(condition):
+			for i in range(3):
+				log.info("Sending LPS Command to Console Attempt %d/3",i+1)
+				self.port.write( ("LPS 2 1").encode() + self.LF)
+				ack = self.port.read(1)
+				#if(ack != self.ACK):
+				#	raise NoDeviceException("Davis Vantage Pro2 is not responding to LPS Command.")
+				if(ack == self.ACK) :
+					log.info("LPS 2 1 Command Success.")
+					condition=False
+					break;
+			time.sleep(5)
+
 		raw = self.port.read( LOOP2StructObject.size )
 		log_raw('read',raw)
 		crc = VProCRC.verify(raw)
