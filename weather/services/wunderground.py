@@ -74,7 +74,7 @@ class Wunderground(HttpPublisher):
     def set( self, pressure='NA', dewpoint='NA', humidity='NA', tempf='NA',
             rainin='NA', rainday='NA', dateutc='NA', windgust='NA',
             windgustdir='NA', windspeed='NA', winddir='NA',
-            clouds='NA', weather='NA', *args, **kw):
+            clouds='NA', weather='NA',windspeedAvg2m='NA',windgustspeed10m='NA',windgustdir10m='NA' ,solarradiation='NA',UV='NA', *args, **kw):
         '''
         Useful for defining weather data published to the server. Parameters
         not set will be reset and not sent to server. Unknown keyword args will
@@ -100,7 +100,13 @@ class Wunderground(HttpPublisher):
                 'windgustdir':windgustdir,
                 'windgustmph':windgust,
                 'windspeedmph':windspeed,
-            } )
+		'windspdmph_avg2m':windspeedAvg2m,
+		'windgustmph_10m':windgustspeed10m,
+		'windgustdir_10m':windgustdir10m,
+		'solarradiation':solarradiation,
+		'UV':UV,
+            } 
+	)
         log.debug( self.args )
 
 

@@ -23,9 +23,11 @@ class NoDeviceExceptionError(NoDeviceException,TypeError):pass
 
 
 LOG_FILENAME = "/var/log/PyWeatherStation.log"
-LOG_LEVEL = logging.INFO
+LOG_LEVEL = logging.DEBUG
 log = logging.getLogger(__name__)
-NUMBER_OF_UPDATES_IN_A_DAY=1440
+POSTING_INTERVAL_TIME = 300
+NUMBER_OF_UPDATES_IN_A_DAY= (24 * 3600)/POSTING_INTERVAL_TIME
+
 
 def weather_update(publishSite,LOOP1,LOOP2):
 	#print ("entering weather_update")		
@@ -36,7 +38,7 @@ def weather_update(publishSite,LOOP1,LOOP2):
          #print ("pressure : ",LOOP1['Pressure'])
          #print ("dewPoint : ",LOOP1['DewPoint'])
          #print ("humidity : ",LOOP1['OutHumidity'])
-         #print ("tempf : ",LOOP1['OutTemp'])
+         #print("tempf : ",LOOP1['OutTemp'])
          #print ("rainin : ",LOOP1['RainRate'])
          #print ("rainday : ",LOOP1['DayRain'])
           #      print ("dateutc : ",LOOP2['DateStampUTC'])
@@ -44,6 +46,8 @@ def weather_update(publishSite,LOOP1,LOOP2):
           #      print ("winddir : ",LOOP1['WindDir'])
           #      print ("windgust : ", LOOP2['10MinWindGust'])
           #      print ("windgustdir : ",LOOP2['WindDir10MinGust'])
+	#print ("solarradiation : ",LOOP2['SolarRadiation'])
+	#print ("UV : ",LOOP2['UVIndex'])
 	try:
 		publishSite.set(
 			pressure = LOOP1['Pressure'],
@@ -54,12 +58,19 @@ def weather_update(publishSite,LOOP1,LOOP2):
 			rainday  = LOOP1['DayRain'],
 			dateutc = LOOP2['DateStampUTC'],
 			windspeed= LOOP1['WindSpeed'],
+			windspeedAvg2m = LOOP2['2MinAvgWindSpeed'],
 			winddir  = LOOP2['WindDir'],
 			windgust = LOOP2['10MinWindGust'],
 			windgustdir = LOOP2['WindDir10MinWindGust'],
+			windgustspeed10m =LOOP2['10MinWindGust'],
+			windgustdir10m = LOOP2['WindDir10MinWindGust'],
+			solarradiation = LOOP2['SolarRadiation'],
+			UV = LOOP2['UVIndex']
 			)
+#		print ("solarradiation: ",publishSite.solarradiation)
+		log.info("Posting update to WUnderground")
 		response = publishSite.publish()
-		#log.info("%s %s",response.status,response.reason)
+		log.info("Posting response %s",response)
 	except (Exception) as e:
 		log.warn('publisher %s: %s'%(publishSite.__class__.__name__,e))
 
@@ -122,18 +133,34 @@ def 	main():
 	try:
 		station = weather.station.VantagePro2()
 		station.serialComm(args.tty)
-	
-		while True:
-	
-			station.wakeupConsole()	
-			if(loopCounter % NUMBER_OF_UPDATES_IN_A_DAY == 0 and not loopCounter == 0):
+		station.getConsoleID()
+		station.getConsoleFirmwareDateCode()
+		station.getConsoleFirmwareVersion()
+		log.info("Console type is %s .",station.getConsoleType())
+		
+		while (True):
+			if(loopCounter % NUMBER_OF_UPDATES_IN_A_DAY == 0 ):
 				station.setConsoleTime()
 				loopCounter = 0
-			LOOPResults = station.getLOOPMsg()
-			LOOP2Results = station.getLOOP2Msg()		
-			weather_update(ps,LOOPResults,LOOP2Results)
+			LOOPResults  = station.getLOOPMsg()
+			LOOP2Results = station.getLOOP2Msg()
+			#print('loop results ',LOOPResults[0],LOOP2Results[0])
+			#print('loop data ',LOOPResults[1])
+			if( LOOPResults[0] == 100  and LOOP2Results[0] ==  100 ):
+				weather_update(ps,LOOPResults[1],LOOP2Results[1])
 			loopCounter = loopCounter + 1
-			time.sleep(60)
+			time.sleep(POSTING_INTERVAL_TIME)
+#		while True:
+#	
+#			station.wakeupConsole()	
+#			if(loopCounter % NUMBER_OF_UPDATES_IN_A_DAY == 0 and not loopCounter == 0):
+#				station.setConsoleTime()
+#				loopCounter = 0
+#			LOOPResults = station.getLOOPMsg()
+#			LOOP2Results = station.getLOOP2Msg()		
+#			weather_update(ps,LOOPResults,LOOP2Results)
+#			loopCounter = loopCounter + 1
+#			time.sleep(60)
 	
 	except (Exception) as e:
 		log.error(e,exc_info=True)

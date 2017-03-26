@@ -19,7 +19,7 @@ log = logging.getLogger('__main__'+'.'+__name__)
 
 READ_DELAY = 3
 BAUDRATE = 19200
-STATION_DELAY = 0.2
+STATION_DELAY = 0.3
 
 
 
@@ -113,7 +113,7 @@ class VantagePro2LOOPStruct( Struct ):
 	Format = (
 		('LOO',		'3s'), ('BarTrend',	'B'), ('PacketType', 	'B'),
 		('NextRecord', 	 'H'), ('Pressure', 	'H'), ('InsideTemp', 	'H'),
-		('InsideHumid',	 'B'), ('OutTemp',	'H'), ('WindSpeed', 	'B'), 
+		('InsideHumid',	 'B'), ('OutTemp',	'h'), ('WindSpeed', 	'B'), 
 		('10AvgWndSpd',	 'B'), ('WindDir',	'H'), ('ExtraTemps',   '7s'),
 	        ('SoilTemp',    '4s'), ('LeafsTemp',   '4s'), ('OutHumidity',   'B'),
 		('ExtraHumid',  '7s'), ('RainRate',     'H'), ('UVIndex',	'B'),
@@ -155,6 +155,9 @@ class VantagePro2LOOPStruct( Struct ):
 		items['SunriseTime'] = self._unpack_time( items['SunriseTime'] )
 		items['SunsetTime']  = self._unpack_time( items['SunsetTime'] )
 		
+		#UVIndex
+		items['UVIndex'] = items['UVIndex'] / 10.0
+		
 		return items
 
 
@@ -183,7 +186,7 @@ class VantagePro2LOOP2Struct( Struct ):
 	Format = (
 		('LOO',		'3s'), ('BarTrend',	'B'), ('PacketType', 	'B'),
 		('Unused', 	 'H'), ('Pressure', 	'H'), ('InsideTemp', 	'H'),
-		('InsideHumid',	 'B'), ('OutTemp',	'H'), ('WindSpeed', 	'B'), 
+		('InsideHumid',	 'B'), ('OutTemp',	'h'), ('WindSpeed', 	'B'), 
 		('Unused',	 'B'), ('WindDir',	'H'), ('10MinAvgWindSpeed',   'H'),
 	        ('2MinAvgWindSpeed',    'H'), ('10MinWindGust',   'H'), ('WindDir10MinWindGust',  'H'),
 		('Unused',       'H'), ('Unused',       'H'), ('DewPoint',	'h'),
@@ -213,6 +216,9 @@ class VantagePro2LOOP2Struct( Struct ):
 		items['RainRate']       = items['RainRate']   /  100.0
 		items['StormRain']      = items['StormRain']  /  100.0
 		items['StartDateStorm'] = self._unpack_storm_date(items['StartDateStorm'])
+		# wind stuff
+		items['2MinAvgWindSpeed'] = items['2MinAvgWindSpeed'] / 10.0
+		items['10MinWindGust'] = items['10MinWindGust'] / 10.0
 		# rain totals
 		items['DailyRain']     = items['DailyRain']   /  100.0
 		# evapotranspiration totals
@@ -223,6 +229,9 @@ class VantagePro2LOOP2Struct( Struct ):
 		items['BaroSensorRaw']  = items['BaroSensorRaw'] / 1000.0
 		items['Altimeter']      = items['Altimeter'] / 1000.0
 						
+		#UVIndex
+		items['UVIndex'] = items['UVIndex'] / 10.0
+
 		return items
 
 
@@ -266,7 +275,7 @@ class VantagePro2HILOWStruct( Struct ):
 		('TimeDayLowWindChill','H'), ('MonthLowWindChill',  'H'), ('YearLowWindChill', 'H'),
 		('DayHighHeatIndex',   'H'), ('TimeDayHighHeatIndex','H'), ('YearHighHeatIndex' ,  'H'),
 		('DayHighTHSW',        'H'), ('TimeDayHighTHSW',    'H'), ('YearHighTHSW',         'H'),
-		('DayHighSolarRad',    'H'), ('TimeDayHighSolarRad','H'), ('MonthHighSolarRar',    'H'),
+		('DayHighSolarRad',    'H'), ('TimeDayHighSolarRad','H'), ('MonthHighSolarRad',    'H'),
 		('YearHighSolarRad',   'H'), ('DayHighUVIndex',     'B'), ('TimeDayHighUVIndex',   'H'),
 		('MonthHighUVIndex',   'B'), ('YearHighUVIndex',    'B'), ('DayHighRainRate',      'H'),
 		('TimeDayHighRainRate','H'), ('HourHighRainRate',   'H'), ('MonthHighRainRate',    'H'),
@@ -301,7 +310,7 @@ class VantagePro2HILOWStruct( Struct ):
 		items['DailyET']       = items['ETDay']     / 1000.0
 		# Baro stuff
 		items['UserBaroOffset'] = items['UserBaroOffset'] / 1000.0
-		items['BaroCalib#']     = items['BaroCalib#'] / 1000.0
+		items['BaroCalib']     = items['BaroCalib'] / 1000.0
 		items['BaroSensorRaw']  = items['BaroSensorRaw'] / 1000.0
 		items['Altimeter']      = items['Altimeter'] / 1000.0
 						
@@ -348,8 +357,9 @@ class VantagePro2(object):
 	WRD = bytes([0x41,0x43,0x4B,0x16])
 	WRDCmd = bytes([0x57,0x52,0x44,0x12,0x4D,0x0A])
 	IDReply = bytes([0x0a,0x0d,0x36,0x33,0x31,0x32,0x43,0x0a,0x0d])
+	port = None
 
-	def __init__(self,device):
+	def __init__(self):
 		#self.port = serial.Serial(device,BAUDRATE,timeout=READ_DELAY)		
 		#self.wakeupConsole()		
 		#self.getConsoleType()
@@ -401,7 +411,7 @@ class VantagePro2(object):
 	       	
 		self.port.write(Command)
 
-		if Command == "VER".decode() + self.LF:
+		if Command == "VER".encode() + self.LF:
 			time.sleep(STATION_DELAY * 3)
 		else:
 		    	time.sleep(STATION_DELAY)
@@ -436,16 +446,13 @@ class VantagePro2(object):
 			log.info("Sending ID Command to Console.")
 			self.writeCommand("ID")
 			idAck = self.port.inWaiting()
-			#ack = self.port.read(9)
 			if idAck > 0 :
 				idString = self.port.read(idAck)
-			log_raw('read',idAck)
-			#to do essayer idString = idString.strip()
-			idString = bytes([idAck[2] , idAck[3], idAck[4], idAck[5] , idAck[6] ]) 
-			#print("id: ",idString)			
+			log_raw('read',idString)
+			idString = idString.decode().strip()
 			if idString == "":
 				idString = "Not available"
-			log.info("Console ID is: %s",idString.decode())
+			log.info("Console ID is: %s",idString)
 		
 		return idString
 		
@@ -461,11 +468,13 @@ class VantagePro2(object):
 			self.writeCommand("VER")
 			firmwareDateCodeBytes = self.port.inWaiting()
 			firmwareDateCode = self.port.read(firmwareDateCodeBytes)
+			log_raw('read',firmwareDateCode)
 			firmwareDateCode = firmwareDateCode.decode()
-			firmwareDateCode = firmwareDateCode.replace("\n\r"," ",3)
+			firmwareDateCode = firmwareDateCode.replace("\n\r","",5)
 			firmwareDateCode = firmwareDateCode.replace("OK","",1)
 			firmwareDateCode = firmwareDateCode.strip()
-			log.info("Console version is ",firmwareDateCode)
+#			print("datecode: %s",firmwareDateCode)
+			log.info("Console date code is %s .",firmwareDateCode)
 		
 		return firmwareDateCode
 		
@@ -480,13 +489,14 @@ class VantagePro2(object):
 			self.writeCommand("NVER")
 			firmwareVersionBytes = self.port.inWaiting()
 			firmwareVersion = self.port.read(firmwareVersionBytes)
+			log_raw('read',firmwareVersion)
 			firmwareVersion = firmwareVersion.decode()
-			firmwareVersion = firmwareVersion.replace("\n\r"," ",3)
+			firmwareVersion = firmwareVersion.replace("\n\r","",3)
 			firmwareVersion = firmwareVersion.replace("OK","",1)
 			firmwareVersion = firmwareVersion.strip()
-			log.info("Console version is ",firmwareVersion)
+			log.info("Console version is %s .",firmwareVersion)
 		
-		return consoleVersion
+		return firmwareVersion
 
 			
 
@@ -563,7 +573,7 @@ class VantagePro2(object):
 			ntpTime = bytearray(6)
 			log.info("Setting timestamp to %s",ctime(time.time()))
 			localtime = time.localtime(time.time())
-	
+			#print("localtime: ", time.asctime(localtime))	
 			ntpTime[0]=localtime.tm_sec
 			ntpTime[1]=localtime.tm_min
 			ntpTime[2]=localtime.tm_hour
@@ -576,14 +586,14 @@ class VantagePro2(object):
 			#ACK
 			#<seconds><minutes><hour><day><month><year-1900><CRC>
 			log.info("Sending SETTIME Command to Console")
-			self.port.reset_input_buffer()
-			self.port.reset_output_buffer()
+			self.port.flushInput()
+			self.port.flushOutput()
 			self.writeCommand("SETTIME")
 			time.sleep(STATION_DELAY*3)
 			ackBytes = self.port.inWaiting()
 			if ackBytes != 1:
-				self.port.reset_input_buffer()
-				self.port.reset_output_buffer()
+				self.port.flushInput()
+				self.port.flushOutput()
 				time.sleep(STATION_DELAY)
 				self.writeCommand("SETTIME")
 				time.sleep(STATION_DELAY*3)
@@ -603,7 +613,7 @@ class VantagePro2(object):
 			ack = self.port.read(ackBytes)
 			log_raw("Read SETTIME Second ACK",ack)
 			if(ack == self.ACK):
-				log.info("SETTIME Command success. Console is synch with NTP time ",ctime(localtime))
+				log.info("SETTIME Command success. Console is synch with NTP time %s.",time.asctime(localtime))
 				
 			elif(ack == self.BADCRC):
 				log.info("BAD CRC Sent")
@@ -613,58 +623,72 @@ class VantagePro2(object):
 
 
 	def getLOOPMsg(self):
-		condition = True	
-		while(condition):
-			for i in range(3):
-				log.info("Sending LOOP Command to Console Attempt %d/3",i+1)
-				self.port.write( ("LOOP 1").encode() + self.LF)
-				ack = self.port.read(1)
-				#ack = self.ACK
-				if(ack == self.ACK ):
-					log.info("LOOP 1 Command Success.")
-					condition = False
-					break;
-			time.sleep(5)
-		#raise NoDeviceException("Davis Vantage Pro2 is not responding to LOOP Command.")
-		raw = self.port.read( LOOPStructObject.size )
-		log_raw('read',raw)
-		#print ("Raw size",len(raw))
-		#new_raw=bytearray(97)
-		#for i in range(97):
-		#	new_raw[i] = raw[i]
-		#print("Raw size",len(new_raw))
-		crc = VProCRC.verify(raw)
-		if( crc == False):
-			raise NoDeviceException("Bad CRC for incoming LOOP packet.")
+		
+		loopMsgResponse = [0, 0]		
+
+		if self.port == None :
+			return loopMsgResponse
 		else:
-			time.sleep(1)
-			return LOOPStructObject.unpack(raw)
+			log.info("Sending LOOP Command to Console.")
+			self.writeCommand( "LOOP 1")
+			time.sleep(STATION_DELAY*3)
+			loopBytes = self.port.inWaiting()
+			log.info("Got %d bytes from serial port",loopBytes)
+			if(loopBytes != 100 ):
+				log.info("Aborting LOOP 1 message read size %d",loopBytes)
+				loopMsgResponse[1] = loopBytes
+				return loopMsgResponse
+
+			loop1Content = self.port.read(loopBytes)
+			log_raw('read',loop1Content)
+			loop1Content = loop1Content[1:]
+			crc = VProCRC.verify(loop1Content)
+			if( crc == False):
+				log.info("Bad CRC for incoming LOOP packet.")
+				loopMsgResponse[0] = 1
+				return loopMsgReponse
+			else:
+				loopMsgResponse[0]=loopBytes
+				loopMsgResponse[1]=LOOPStructObject.unpack(loop1Content)
+				#print('loop1 data apres unpack ',loopMsgResponse[1])
+
+				return loopMsgResponse
 		
 			
 	def getLOOP2Msg(self):
-		
-		condition=True		
-		while(condition):
-			for i in range(3):
-				log.info("Sending LPS Command to Console Attempt %d/3",i+1)
-				self.port.write( ("LPS 2 1").encode() + self.LF)
-				ack = self.port.read(1)
-				#if(ack != self.ACK):
-				#	raise NoDeviceException("Davis Vantage Pro2 is not responding to LPS Command.")
-				if(ack == self.ACK) :
-					log.info("LPS 2 1 Command Success.")
-					condition=False
-					break;
-			time.sleep(5)
+		loopMsgResponse = [0,0]
 
-		raw = self.port.read( LOOP2StructObject.size )
-		log_raw('read',raw)
-		crc = VProCRC.verify(raw)
-		if( crc == False):
-			raise NoDeviceException("Bad CRC for incoming LPS packet.")
+		if self.port == None:
+			return loopMsgResponse
 		else:
-			time.sleep(1)
-			return LOOP2StructObject.unpack(raw)
+			log.info("Sending LPS Command to Console.")
+			self.port.flushInput()
+			self.port.flushOutput()
+			time.sleep(STATION_DELAY)
+			self.writeCommand("\n\n")
+			self.port.flushInput()
+			self.writeCommand( "LPS 2 1")
+			time.sleep(STATION_DELAY)
+			loop2Bytes = self.port.inWaiting()
+			log.info("Got %d bytes from serial port",loop2Bytes)
+			if(loop2Bytes != 100):
+				log.info("Aborting LPS message read size %d.",loop2Bytes)
+				loopMsgResponse[0]= loop2Bytes
+				return loopMsgResponse
+
+			loop2Content = self.port.read(loop2Bytes)
+			log_raw("read",loop2Content)
+			loop2Content = loop2Content[1:]
+
+			crc = VProCRC.verify(loop2Content)
+			if( crc == False):
+				log.info("Bad CRC for incoming LPS packet.")
+				loopMsgResponse[0]=1
+				return loopMsgResponse
+			else:
+				loopMsgResponse[0]=loop2Bytes
+				loopMsgResponse[1]= LOOP2StructObject.unpack(loop2Content)
+				return loopMsgResponse
 			
 								
 	def getRXCHECK(self):
