@@ -16,6 +16,7 @@ import argparse
 
 import weather.station
 import weather.services
+import http.client
 
 
 class NoDeviceException(Exception):pass
@@ -23,10 +24,11 @@ class NoDeviceExceptionError(NoDeviceException,TypeError):pass
 
 
 LOG_FILENAME = "/var/log/PyWeatherStation.log"
-LOG_LEVEL = logging.DEBUG
+LOG_LEVEL = logging.WARNING
 log = logging.getLogger(__name__)
-POSTING_INTERVAL_TIME = 300
+POSTING_INTERVAL_TIME = 60
 NUMBER_OF_UPDATES_IN_A_DAY= (24 * 3600)/POSTING_INTERVAL_TIME
+NUMBER_OF_NTP_UPDATES = 60
 
 
 def weather_update(publishSite,LOOP1,LOOP2):
@@ -48,6 +50,7 @@ def weather_update(publishSite,LOOP1,LOOP2):
           #      print ("windgustdir : ",LOOP2['WindDir10MinGust'])
 	#print ("solarradiation : ",LOOP2['SolarRadiation'])
 	#print ("UV : ",LOOP2['UVIndex'])
+	response=""
 	try:
 		publishSite.set(
 			pressure = LOOP1['Pressure'],
@@ -71,8 +74,11 @@ def weather_update(publishSite,LOOP1,LOOP2):
 		log.info("Posting update to WUnderground")
 		response = publishSite.publish()
 		log.info("Posting response %s",response)
-	except (Exception) as e:
+		#print("Posting response %s",response)
+	except (http.client.HTTPException) as e:
 		log.warn('publisher %s: %s'%(publishSite.__class__.__name__,e))
+		response = publishSite.publish()
+#		log.warn("publisher response %s",response)
 
 
 
@@ -132,24 +138,33 @@ def 	main():
 		
 	try:
 		station = weather.station.VantagePro2()
-		station.serialComm(args.tty)
-		station.getConsoleID()
-		station.getConsoleFirmwareDateCode()
-		station.getConsoleFirmwareVersion()
-		log.info("Console type is %s .",station.getConsoleType())
-		
+	
 		while (True):
-			if(loopCounter % NUMBER_OF_UPDATES_IN_A_DAY == 0 ):
-				station.setConsoleTime()
-				loopCounter = 0
-			LOOPResults  = station.getLOOPMsg()
-			LOOP2Results = station.getLOOP2Msg()
-			#print('loop results ',LOOPResults[0],LOOP2Results[0])
-			#print('loop data ',LOOPResults[1])
-			if( LOOPResults[0] == 100  and LOOP2Results[0] ==  100 ):
-				weather_update(ps,LOOPResults[1],LOOP2Results[1])
-			loopCounter = loopCounter + 1
+			
+			station.serialComm(args.tty)
+
+			if(station.serialCommStatus() == True):
+				#print("ici");
+				station.getConsoleID()
+				station.getConsoleFirmwareDateCode()
+				station.getConsoleFirmwareVersion()
+				log.info("Console type is %s .",station.getConsoleType())
+		
+		#while (True):
+				if(loopCounter % NUMBER_OF_NTP_UPDATES == 0 ):
+					station.setConsoleTime()
+					loopCounter = 0
+				LOOPResults  = station.getLOOPMsg()
+				LOOP2Results = station.getLOOP2Msg()
+				#print('loop results ',LOOPResults[0],LOOP2Results[0])
+				#print('loop data ',LOOPResults[1])
+				if( LOOPResults[0] == 100  and LOOP2Results[0] ==  100 ):
+					weather_update(ps,LOOPResults[1],LOOP2Results[1])
+					#print("posting")
+				loopCounter = loopCounter + 1
+			#print("avant sleep 60 secondes");
 			time.sleep(POSTING_INTERVAL_TIME)
+			#print("apres sleep 60 secondes");
 #		while True:
 #	
 #			station.wakeupConsole()	

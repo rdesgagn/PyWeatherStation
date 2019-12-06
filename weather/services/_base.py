@@ -45,12 +45,15 @@ class HttpPublisher(object):
       log.debug('Connect to: http://%s' % server)
       log.debug('GET %s' % uri)
 
-      conn = HTTPConnection(server, timeout=5)
+      conn = HTTPConnection(server, timeout=10) #timeout was 5
       if not conn:
          raise PublishException('Remote server connection timeout')
       conn.request("GET", uri)
 
       http = conn.getresponse() 
+      if not http:
+      	 raise PublishException('Remote server timeout: %s' % http.status)
+
       data = (http.status, http.reason, http.read())
       conn.close()
       if not (data[0] == 200 and data[1] == 'OK'):

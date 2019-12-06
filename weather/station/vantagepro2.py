@@ -372,8 +372,15 @@ class VantagePro2(object):
 			self.port.close()
 
 
+	def serialCommStatus(self):
+		if (self.port == None):
+			return False
+		else :
+			return True
+
 	def serialComm(self,device):
 		
+		#print("in serialComm")
 		self.port = serial.Serial(device,BAUDRATE,timeout=READ_DELAY)
 		time.sleep(STATION_DELAY)
 	
@@ -381,8 +388,9 @@ class VantagePro2(object):
 			return
 		else :
 			wakeUpSuccess = False
-			for attemptNo in range(1,3):
+			for attemptNo in range(1,4):
 				log.info("Sending wakeup command to Console. Attempt %d/3",attemptNo)
+				#print("Range: %d/3",attemptNo)
 				self.port.write(self.LF)
 				if self.port.inWaiting() == 2:
 					dummyBuffer = self.port.read(self.port.inWaiting())
@@ -391,18 +399,22 @@ class VantagePro2(object):
 					self.writeCommand("Test")
 					time.sleep(STATION_DELAY)
 					dummyBuffer = self.port.read(self.port.inWaiting())
+					#print("console is awake")
 					break
 				else:
 					log.info("The Console is not responding to wakeupcall")
-					dummyBuffer = self.port.read(self.port.inWaiting())
+					#print("console not awake")
+					#dummyBuffer = self.port.read(self.port.inWaiting())
 					time.sleep(1.5)
 
 			if wakeUpSuccess == True:
 				log.info("The Console is now responding to Commands.")
+				#print("wakeupsuccess")
 			else:
 				log.info("Unable to wake up the console. Check connections.")
 				self.port.close()
 				self.port = None
+				#print("self.port=None")
 			return self.port
 	  		
 	def writeCommand(self,Command):
@@ -446,12 +458,14 @@ class VantagePro2(object):
 			log.info("Sending ID Command to Console.")
 			self.writeCommand("ID")
 			idAck = self.port.inWaiting()
+			
 			if idAck > 0 :
 				idString = self.port.read(idAck)
-			log_raw('read',idString)
-			idString = idString.decode().strip()
+				log_raw('read',idString)
+				idString = idString.decode().strip()
 			if idString == "":
 				idString = "Not available"
+			
 			log.info("Console ID is: %s",idString)
 		
 		return idString
@@ -467,12 +481,13 @@ class VantagePro2(object):
 			log.info("Sending VER Command to Console.")
 			self.writeCommand("VER")
 			firmwareDateCodeBytes = self.port.inWaiting()
-			firmwareDateCode = self.port.read(firmwareDateCodeBytes)
-			log_raw('read',firmwareDateCode)
-			firmwareDateCode = firmwareDateCode.decode()
-			firmwareDateCode = firmwareDateCode.replace("\n\r","",5)
-			firmwareDateCode = firmwareDateCode.replace("OK","",1)
-			firmwareDateCode = firmwareDateCode.strip()
+			if firmwareDateCodeBytes > 0:
+				firmwareDateCode = self.port.read(firmwareDateCodeBytes)
+				log_raw('read',firmwareDateCode)
+				firmwareDateCode = firmwareDateCode.decode()
+				firmwareDateCode = firmwareDateCode.replace("\n\r","",5)
+				firmwareDateCode = firmwareDateCode.replace("OK","",1)
+				firmwareDateCode = firmwareDateCode.strip()
 #			print("datecode: %s",firmwareDateCode)
 			log.info("Console date code is %s .",firmwareDateCode)
 		
@@ -488,12 +503,13 @@ class VantagePro2(object):
 			log.info("Sending NVER Command to Console.")
 			self.writeCommand("NVER")
 			firmwareVersionBytes = self.port.inWaiting()
-			firmwareVersion = self.port.read(firmwareVersionBytes)
-			log_raw('read',firmwareVersion)
-			firmwareVersion = firmwareVersion.decode()
-			firmwareVersion = firmwareVersion.replace("\n\r","",3)
-			firmwareVersion = firmwareVersion.replace("OK","",1)
-			firmwareVersion = firmwareVersion.strip()
+			if firmwareVersionBytes > 0 :
+				firmwareVersion = self.port.read(firmwareVersionBytes)
+				log_raw('read',firmwareVersion)
+				firmwareVersion = firmwareVersion.decode()
+				firmwareVersion = firmwareVersion.replace("\n\r","",3)
+				firmwareVersion = firmwareVersion.replace("OK","",1)
+				firmwareVersion = firmwareVersion.strip()
 			log.info("Console version is %s .",firmwareVersion)
 		
 		return firmwareVersion
